@@ -39,5 +39,9 @@ public class MainActivity extends Activity {
         openContactsPage.putExtra("MESSAGE_FROM_USER", message);
         startActivity(openContactsPage);
     }
+
+    public void insertRecipientName(View view){
+        messageInput.getText().insert(messageInput.getSelectionStart(), "[RECIPIENT]");
+    }
 }
 

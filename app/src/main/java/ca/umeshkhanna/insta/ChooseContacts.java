@@ -50,7 +50,7 @@ public class ChooseContacts extends Activity {
             }
             phones.close();
 
-            System.out.println(contacts.get(3).name);
+           // System.out.println(contacts.get(3).name);
             ScrollView sv = new ScrollView(this);
             final LinearLayout ll = new LinearLayout(this);
             ll.setOrientation(LinearLayout.VERTICAL);
@@ -85,7 +85,8 @@ public class ChooseContacts extends Activity {
                     for(MyContacts c: contacts){
                         if(c.cb.isChecked()){
                             String first = c.name.split(" ")[0];
-                            sms.sendTextMessage(c.phoneNumber, null, "Hey " + first + "!" + message, null, null);
+                            String finalMessage = message.replace("[RECIPIENT]", first);
+                            sms.sendTextMessage(c.phoneNumber, null, finalMessage, null, null);
                         }
 
                     }
