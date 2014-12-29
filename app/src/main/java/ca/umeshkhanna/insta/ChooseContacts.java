@@ -2,109 +2,157 @@ package ca.umeshkhanna.insta;
 
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.telephony.SmsManager;
-import android.text.InputType;
-import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.telephony.gsm.SmsManager;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.Button;
-import android.widget.RelativeLayout;
-import android.widget.ScrollView;
-import android.widget.Toast;
-import android.view.View.OnClickListener;
-import android.app.AlertDialog;
+import android.widget.ListView;
+import android.widget.TextView;
 
 import java.util.ArrayList;
-import ca.umeshkhanna.insta.R;
-
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 public class ChooseContacts extends Activity {
-    private RelativeLayout layout;
+
+    private ListView mainListView ;
+    private ArrayAdapter<Contact> listAdapter ;
+    ArrayList<Contact> contactList;
+    String message;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_choose_contacts);
-        layout = (RelativeLayout)findViewById(R.id.chooseContactsLayout);
 
         Intent intent = getIntent();
-        final String message = intent.getStringExtra("MESSAGE_FROM_USER");
+        message = intent.getStringExtra("MESSAGE_FROM_USER");
 
-            final ArrayList<MyContacts> contacts = new ArrayList<MyContacts>();
-            Cursor phones = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,null,null, null);
-
-            while (phones.moveToNext())
-            {
-                String name=phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
-                String phoneNumber = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)).replaceAll("\\D+", "");
-
-                contacts.add(new MyContacts(name, phoneNumber));
-
+        mainListView = (ListView) findViewById( R.id.mainListView );
+        mainListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick( AdapterView<?> parent, View item, int position, long id) {
+                Contact contact = listAdapter.getItem( position );
+                contact.toggleChecked();
+                ContactViewHolder viewHolder = (ContactViewHolder) item.getTag();
+                viewHolder.getCheckBox().setChecked( contact.isChecked() );
             }
-            phones.close();
+        });
 
-           // System.out.println(contacts.get(3).name);
-            ScrollView sv = new ScrollView(this);
-            final LinearLayout ll = new LinearLayout(this);
-            ll.setOrientation(LinearLayout.VERTICAL);
-            sv.addView(ll);
-            Button selectb = new Button(this);
-            selectb.setOnClickListener(new OnClickListener(){
+        contactList = new ArrayList<Contact>();
+        Cursor phones = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, null, null, null);
 
-                @Override
-                public void onClick(View arg0) {
-                    // TODO Auto-generated method stub
+        while (phones.moveToNext()) {
+            String name = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+            String phoneNumber = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)).replaceAll("\\D+", "");
+            contactList.add(new Contact(name, phoneNumber));
+        }
+        phones.close();
 
-                }
-
-            });
-            selectb.setText("Select All");
-            ll.addView(selectb);
-            for(MyContacts c : contacts){
-                CheckBox cb = new CheckBox(this);
-                cb.setText(c.name + " " + c.phoneNumber);
-                c.cb = cb;
-                ll.addView(cb);
+        // Sort list alphabetically
+        Collections.sort(contactList, new Comparator<Contact>() {
+            public int compare(Contact contact1, Contact contact2) {
+                return contact1.getName().compareTo(contact2.getName());
             }
-            Button b = new Button(this);
-            final SmsManager sms = SmsManager.getDefault();
-            b.setText("text them!");
-            ll.addView(b);
-            b.setOnClickListener(new OnClickListener(){
+        });
 
-                @Override
-                public void onClick(View v) {
-                    // TODO Auto-generated method stub
-                    for(MyContacts c: contacts){
-                        if(c.cb.isChecked()){
-                            String first = c.name.split(" ")[0];
-                            String finalMessage = message.replace("[RECIPIENT]", first);
-                            sms.sendTextMessage(c.phoneNumber, null, finalMessage, null, null);
-                        }
+        // Remove duplicates
+        ArrayList<Contact> sortedContactList = new ArrayList<Contact>();
+        Set<String> temp = new HashSet<String>();
 
-                    }
+        for( Contact c : contactList ) {
+            if( temp.add(c.getName() + " " + c.getNumber()) ) {
+                sortedContactList.add(c);
+            }
+        }
 
-                }
+        listAdapter = new ContactArrayAdapter(this, sortedContactList);
+        mainListView.setAdapter( listAdapter );
+    }
 
-            });
+    public void sendMessage(View view) {
+        SmsManager sms = SmsManager.getDefault();
+        String recipientName, finalMessage;
+        for (Contact c : contactList) {
+            if (c.isChecked()) {
+                recipientName = c.name.split(" ")[0];
+                finalMessage = message.replace("[RECIPIENT]", recipientName);
+                sms.sendTextMessage(c.phoneNumber, null, finalMessage, null, null);
+            }
+        }
+    }
 
-            this.setContentView(sv);
+    private static class ContactViewHolder {
+        private CheckBox checkBox ;
+        private TextView textView ;
+        
+        public ContactViewHolder(TextView textView, CheckBox checkBox) {
+            this.checkBox = checkBox ;
+            this.textView = textView ;
+        }
+        public CheckBox getCheckBox() {
+            return checkBox;
+        }
 
+        public TextView getTextView() {
+            return textView;
+        }
+    }
 
+    private static class ContactArrayAdapter extends ArrayAdapter<Contact> {
+
+        private LayoutInflater inflater;
+
+        public ContactArrayAdapter(Context context, List<Contact> contactList) {
+            super( context, R.layout.simplerow, R.id.rowTextView, contactList );
+            inflater = LayoutInflater.from(context) ;
         }
 
         @Override
-        public boolean onCreateOptionsMenu(Menu menu) {
-            // Inflate the menu; this adds items to the action bar if it is present.
-            getMenuInflater().inflate(R.menu.main, menu);
-            return true;
-        }
+        public View getView(int position, View convertView, ViewGroup parent) {
 
+            CheckBox checkBox;
+            TextView textView;
+
+            Contact contact = (Contact) this.getItem( position );
+
+            if ( convertView == null ) {
+                convertView = inflater.inflate(R.layout.simplerow, null);
+
+                textView = (TextView) convertView.findViewById( R.id.rowTextView );
+                checkBox = (CheckBox) convertView.findViewById( R.id.CheckBox01 );
+
+                convertView.setTag( new ContactViewHolder(textView, checkBox) );
+
+                checkBox.setOnClickListener( new View.OnClickListener() {
+                    public void onClick(View v) {
+                        CheckBox checkBox = (CheckBox) v ;
+                        Contact contact = (Contact) checkBox.getTag();
+                        contact.setChecked(checkBox.isChecked());
+                    }
+                });
+            }
+            else {
+                ContactViewHolder viewHolder = (ContactViewHolder) convertView.getTag();
+                checkBox = viewHolder.getCheckBox() ;
+                textView = viewHolder.getTextView() ;
+            }
+
+            checkBox.setTag( contact );
+            checkBox.setChecked(contact.isChecked());
+            textView.setText( contact.getName() + " " + contact.getNumber() );
+
+            return convertView;
+        }
     }
+}
