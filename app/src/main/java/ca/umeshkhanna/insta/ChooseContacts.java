@@ -34,6 +34,7 @@ public class ChooseContacts extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_choose_contacts);
 
+
         message = getIntent().getStringExtra("MESSAGE_FROM_USER");
 
         mainListView = (ListView) findViewById( R.id.mainListView );
