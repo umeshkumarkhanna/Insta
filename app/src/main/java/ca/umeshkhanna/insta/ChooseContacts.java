@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.telephony.gsm.SmsManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,8 +34,7 @@ public class ChooseContacts extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_choose_contacts);
 
-        Intent intent = getIntent();
-        message = intent.getStringExtra("MESSAGE_FROM_USER");
+        message = getIntent().getStringExtra("MESSAGE_FROM_USER");
 
         mainListView = (ListView) findViewById( R.id.mainListView );
         mainListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -81,21 +79,16 @@ public class ChooseContacts extends Activity {
     }
 
     public void sendMessage(View view) {
-        SmsManager sms = SmsManager.getDefault();
-        String recipientName, finalMessage;
-        for (Contact c : contactList) {
-            if (c.isChecked()) {
-                recipientName = c.name.split(" ")[0];
-                finalMessage = message.replace("[RECIPIENT]", recipientName);
-                sms.sendTextMessage(c.phoneNumber, null, finalMessage, null, null);
-            }
-        }
+        Intent openConfirmationActivity = new Intent(this, ConfirmationActivity.class);
+        openConfirmationActivity.putExtra("MESSAGE_FROM_USER", message);
+        openConfirmationActivity.putExtra("CONTACT_LIST", contactList);
+        startActivity(openConfirmationActivity);
     }
 
     private static class ContactViewHolder {
         private CheckBox checkBox ;
         private TextView textView ;
-        
+
         public ContactViewHolder(TextView textView, CheckBox checkBox) {
             this.checkBox = checkBox ;
             this.textView = textView ;
